@@ -50,4 +50,13 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.github.ismaeldivita:chip-navigation-bar:1.4.0")
 
+    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation ("com.google.firebase:firebase-database")
+
+    implementation ("com.cloudinary:cloudinary-android:2.4.0")
+
+
+
+
 }

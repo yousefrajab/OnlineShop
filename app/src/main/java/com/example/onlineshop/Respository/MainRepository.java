@@ -65,6 +65,7 @@ public class MainRepository {
     }
 
 
+    // ▼▼▼ هذه هي الدالة التي تم تعديلها ▼▼▼
     public LiveData<ArrayList<ItemsModel>> loadPopular() {
         MutableLiveData<ArrayList<ItemsModel>> listData = new MutableLiveData<>();
         DatabaseReference ref = firebaseDatabase.getReference("Items");
@@ -74,15 +75,18 @@ public class MainRepository {
                 ArrayList<ItemsModel> list = new ArrayList<>();
                 for (DataSnapshot childSnapshot : snapshot.getChildren()) {
                     ItemsModel item = childSnapshot.getValue(ItemsModel.class);
-                    if (item != null) list.add(item);
-
+                    if (item != null) {
+                        // --- السطر السحري: حفظ المفتاح داخل الكائن ---
+                        item.setKey(childSnapshot.getKey());
+                        list.add(item);
+                    }
                 }
                 listData.setValue(list);
             }
 
             @Override
             public void onCancelled(@NonNull DatabaseError error) {
-
+                // يمكنك معالجة الخطأ هنا
             }
         });
         return listData;

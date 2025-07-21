@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/LightGrey"
+    tools:context=".Fragment.AddEditProductFragment">
+
+    <LinearLayout
+        android:id="@+id/formContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <ImageView
+            android:id="@+id/backBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/back"
+            android:padding="8dp"/>
+
+        <TextView
+            android:id="@+id/pageTitleTxt"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Add New Product"
+            android:textColor="@color/black"
+            android:textSize="28sp"
+            android:textStyle="bold" />
+
+        <!-- حقول الإدخال -->
+        <TextView style="@style/AdminFormLabel" android:text="Product Title"/>
+        <EditText android:id="@+id/titleEdt" style="@style/AdminFormEditText" android:hint="e.g., Stylish Watch"/>
+
+        <TextView style="@style/AdminFormLabel" android:text="Description"/>
+        <EditText android:id="@+id/descriptionEdt" style="@style/AdminFormEditText" android:hint="Product details..." android:minLines="3" android:gravity="top"/>
+
+        <TextView style="@style/AdminFormLabel" android:text="Price"/>
+        <EditText android:id="@+id/priceEdt" style="@style/AdminFormEditText" android:hint="e.g., 99.99" android:inputType="numberDecimal"/>
+
+        <TextView style="@style/AdminFormLabel" android:text="Old Price (Optional)"/>
+        <EditText android:id="@+id/oldPriceEdt" style="@style/AdminFormEditText" android:hint="e.g., 120.00" android:inputType="numberDecimal"/>
+
+        <!-- ▼▼▼ الحقول الجديدة التي تمت إضافتها ▼▼▼ -->
+        <TextView style="@style/AdminFormLabel" android:text="Discount Percent (e.g., 30%)"/>
+        <EditText android:id="@+id/offPercentEdt" style="@style/AdminFormEditText" android:hint="e.g., 30%"/>
+
+        <TextView style="@style/AdminFormLabel" android:text="Number of Reviews (Optional)"/>
+        <EditText android:id="@+id/reviewEdt" style="@style/AdminFormEditText" android:hint="e.g., 25" android:inputType="number"/>
+        <!-- ▲▲▲ نهاية الحقول الجديدة ▲▲▲ -->
+
+        <TextView style="@style/AdminFormLabel" android:text="Rating (Optional)"/>
+        <EditText android:id="@+id/ratingEdt" style="@style/AdminFormEditText" android:hint="e.g., 4.5" android:inputType="numberDecimal"/>
+
+        <TextView style="@style/AdminFormLabel" android:text="Category"/>
+        <Spinner
+            android:id="@+id/categorySpinner"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@drawable/white_bg"
+            android:paddingStart="8dp"/>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/saveProductBtn"
+            style="@android:style/Widget.Button"
+            android:layout_width="match_parent"
+            android:layout_height="55dp"
+            android:layout_marginTop="32dp"
+            android:background="@drawable/orange_bg"
+            android:text="Save Product"
+            android:textColor="@color/white"
+            android:textSize="18sp" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            android:layout_marginTop="16dp"/>
+
+    </LinearLayout>
+</ScrollView>

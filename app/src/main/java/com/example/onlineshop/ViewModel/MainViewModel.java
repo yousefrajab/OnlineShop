@@ -11,16 +11,18 @@ import com.example.onlineshop.Respository.MainRepository;
 import java.util.ArrayList;
 
 public class MainViewModel extends ViewModel {
-    private final MainRepository repository=new MainRepository();
+    private final MainRepository repository = new MainRepository();
 
-    public LiveData<ArrayList<CategoryModel>> loadCategory(){
+    // استخدم أسماء دوال أكثر وضوحاً
+    public LiveData<ArrayList<CategoryModel>> getCategories() {
         return repository.loadCategory();
-
     }
-    public LiveData<ArrayList<BannerModel>> loadBanner(){
+
+    public LiveData<ArrayList<BannerModel>> getBanners() {
         return repository.loadBanner();
     }
-    public LiveData<ArrayList<ItemsModel>> loadPopular(){
+
+    public LiveData<ArrayList<ItemsModel>> getPopular() {
         return repository.loadPopular();
     }
 }

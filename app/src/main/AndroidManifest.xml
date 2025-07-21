@@ -2,7 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,6 +15,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.OnlineShop"
         tools:targetApi="31">
+        <activity
+            android:name=".Activity.FavoritesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Activity.ProfileActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Activity.RegisterActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Activity.LoginActivity"
+            android:exported="false" />
         <activity
             android:name=".Activity.CartActivity"
             android:exported="false" />
@@ -29,7 +44,7 @@
         </activity>
         <activity
             android:name=".Activity.MainActivity"
-            android:exported="true" />
+            android:exported="false" />
     </application>
 
 </manifest>

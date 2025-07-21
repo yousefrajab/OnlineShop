@@ -1,14 +1,11 @@
-// CategoryAdapter.java - النسخة المصححة
-
 package com.example.onlineshop.Adapter;
 
 import android.content.Context;
-import android.view.LayoutInflater; // <-- إضافة مهمة
-import android.view.View;
+import android.view.LayoutInflater;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
-import androidx.core.content.ContextCompat; // <-- إضافة للتحسين
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.onlineshop.Domain.CategoryModel;
@@ -18,41 +15,56 @@ import com.example.onlineshop.databinding.ViewholderCategoryBinding;
 import java.util.ArrayList;
 
 public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHolder> {
-    private ArrayList<CategoryModel> items;
-    private Context context;
-    private int selectedPosition = -1;
-    private int lastSelectedPosition = -1;
+    private final ArrayList<CategoryModel> items;
+    private int selectedPosition = 0; // "All" (أول عنصر) هي المختارة افتراضيًا
 
-    public CategoryAdapter(ArrayList<CategoryModel> items) {
+    // ▼▼▼ المتغير الجديد للاحتفاظ بالـ Listener ▼▼▼
+    private final CategoryClickListener listener;
+    private Context context; // تمت إضافته ليكون متاحًا في كل الكلاس
+
+    // ▼▼▼ تعديل الـ Constructor ليقبل الـ Listener ▼▼▼
+    public CategoryAdapter(ArrayList<CategoryModel> items, CategoryClickListener listener) {
         this.items = items;
+        this.listener = listener;
     }
 
     @NonNull
     @Override
-    public CategoryAdapter.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        context = parent.getContext();
-        // <-- الخطوة 1: التصحيح هنا، استخدم LayoutInflater
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        this.context = parent.getContext();
         ViewholderCategoryBinding binding = ViewholderCategoryBinding.inflate(LayoutInflater.from(context), parent, false);
         return new ViewHolder(binding);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull CategoryAdapter.ViewHolder holder, int position) {
-        holder.binding.titleTxt.setText(items.get(position).getTitle());
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+        CategoryModel item = items.get(position);
+        holder.binding.titleTxt.setText(item.getTitle());
 
-        // في النسخة الأصلية، كان getAdapterPosition() هو الحل الأمثل لتجنب المشاكل
-        // لكن بما أنك تستخدم position مباشرة في onClick، فهذا يعمل لكنه أقل أماناً
-        // الطريقة التالية آمنة
-        holder.binding.getRoot().setOnClickListener(view -> {
-            lastSelectedPosition = selectedPosition;
+        // ▼▼▼ تعديل الـ OnClickListener ليكون أكثر أمانًا وفعالية ▼▼▼
+        holder.itemView.setOnClickListener(v -> {
+            // التحقق من أن المستخدم لم يضغط على نفس العنصر مرة أخرى
+            if (selectedPosition == holder.getAdapterPosition()) {
+                return;
+            }
+
+            // تحديث المواقع القديمة والجديدة
+            int lastSelected = selectedPosition;
             selectedPosition = holder.getAdapterPosition();
-            notifyItemChanged(lastSelectedPosition);
+
+            // إعلام الـ RecyclerView بتحديث العنصرين فقط بدلاً من كل القائمة
+            notifyItemChanged(lastSelected);
             notifyItemChanged(selectedPosition);
+
+            // استدعاء دالة الـ listener في HomeFragment لتصفية المنتجات
+            if (listener != null) {
+                listener.onCategoryClick(item.getId());
+            }
         });
 
+        // تحديث مظهر العنصر بناءً على ما إذا كان محددًا أم لا
         if (selectedPosition == position) {
             holder.binding.titleTxt.setBackgroundResource(R.drawable.orange_bg);
-            // <-- الخطوة 2 (تحسين): استخدام ContextCompat
             holder.binding.titleTxt.setTextColor(ContextCompat.getColor(context, R.color.white));
         } else {
             holder.binding.titleTxt.setBackgroundResource(R.drawable.stroke_bg);
@@ -65,7 +77,7 @@ public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.ViewHo
         return items.size();
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder {
+    public static class ViewHolder extends RecyclerView.ViewHolder {
         ViewholderCategoryBinding binding;
 
         public ViewHolder(ViewholderCategoryBinding binding) {
