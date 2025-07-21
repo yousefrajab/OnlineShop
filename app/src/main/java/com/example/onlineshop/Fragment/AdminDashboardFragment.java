@@ -13,6 +13,8 @@ import androidx.fragment.app.Fragment;
 import com.example.onlineshop.R;
 import com.example.onlineshop.databinding.FragmentAdminDashboardBinding;
 
+import com.example.onlineshop.Fragment.AllOrdersFragment;
+
 public class AdminDashboardFragment extends Fragment {
 
     private FragmentAdminDashboardBinding binding;
@@ -41,13 +43,21 @@ public class AdminDashboardFragment extends Fragment {
             if (getParentFragmentManager() != null) {
                 getParentFragmentManager().beginTransaction()
                         .replace(R.id.fragment_container, new ManageProductsFragment())
-                        .addToBackStack(null) // <-- أبقِ على هذا السطر
+                        .addToBackStack(null)
                         .commit();
             }
         });
 
+        // ▼▼▼ هذا هو الجزء الذي تم تعديله ▼▼▼
         binding.viewOrdersBtn.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "View Orders - Coming Soon!", Toast.LENGTH_SHORT).show();
+            if (getParentFragmentManager() != null) {
+                // استبدال الـ Toast بالكود الفعلي لفتح AllOrdersFragment
+                getParentFragmentManager().beginTransaction()
+                        .replace(R.id.fragment_container, new AllOrdersFragment())
+                        .addToBackStack(null)
+                        .commit();
+            }
         });
+        // ▲▲▲ نهاية الجزء المعدل ▲▲▲
     }
 }

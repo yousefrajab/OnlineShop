@@ -9,17 +9,20 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.onlineshop.Adapter.CartAdapter;
 import com.example.onlineshop.Domain.ItemsModel;
 import com.example.onlineshop.Domain.OrderModel;
+import com.example.onlineshop.Domain.UserModel;
 import com.example.onlineshop.Helper.ManagmentCart;
 import com.example.onlineshop.databinding.FragmentCartBinding;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 
@@ -28,7 +31,6 @@ public class CartFragment extends Fragment {
     private ManagmentCart managmentCart;
     private CartAdapter cartAdapter;
     private ArrayList<ItemsModel> currentCartItems = new ArrayList<>();
-
 
     @Nullable
     @Override
@@ -40,64 +42,77 @@ public class CartFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
         managmentCart = new ManagmentCart(getContext());
-
         initCartList();
         observeCartData();
-
         setupCheckoutButton();
     }
 
     private void setupCheckoutButton() {
         binding.checkoutBtn.setOnClickListener(v -> {
-            // 1. تحقق من أن السلة ليست فارغة
             if (currentCartItems == null || currentCartItems.isEmpty()) {
                 Toast.makeText(getContext(), "Your cart is empty!", Toast.LENGTH_SHORT).show();
                 return;
             }
-
-            // 2. إنشاء الطلب
             placeOrder();
         });
     }
 
     private void placeOrder() {
+        binding.progressBar.setVisibility(View.VISIBLE);
         String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("Orders").child(userId);
+        DatabaseReference userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId);
 
-        // إنشاء ID فريد للطلب باستخدام push()
-        String orderId = ordersRef.push().getKey();
+        userRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.exists()) {
+                    UserModel currentUser = snapshot.getValue(UserModel.class);
 
-        // حساب السعر الإجمالي
-        double totalAmount = Double.parseDouble(binding.totalTxt.getText().toString().replace("$", ""));
+                    DatabaseReference ordersRef = FirebaseDatabase.getInstance().getReference("Orders").child(userId);
+                    String orderId = ordersRef.push().getKey();
+                    double totalAmount = Double.parseDouble(binding.totalTxt.getText().toString().replace("$", ""));
 
-        // إنشاء كائن الطلب
-        OrderModel newOrder = new OrderModel(orderId, System.currentTimeMillis(), totalAmount, currentCartItems);
+                    OrderModel newOrder = new OrderModel();
+                    newOrder.setOrderId(orderId);
+                    newOrder.setDate(System.currentTimeMillis());
+                    newOrder.setTotalAmount(totalAmount);
+                    newOrder.setItems(currentCartItems);
+                    newOrder.setUserId(userId);
+                    if (currentUser != null) {
+                        newOrder.setUserName(currentUser.getName());
+                        newOrder.setUserProfileImageUrl(currentUser.getProfileImageUrl());
+                    }
 
-        // 3. حفظ الطلب في قاعدة البيانات
-        if (orderId != null) {
-            ordersRef.child(orderId).setValue(newOrder).addOnCompleteListener(task -> {
-                if (task.isSuccessful()) {
-                    // 4. إذا نجح الحفظ، قم بمسح سلة المشتريات
-                    clearCart();
-                    Toast.makeText(getContext(), "Order placed successfully!", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(getContext(), "Failed to place order. Please try again.", Toast.LENGTH_SHORT).show();
+                    if (orderId != null) {
+                        ordersRef.child(orderId).setValue(newOrder).addOnCompleteListener(task -> {
+                            binding.progressBar.setVisibility(View.GONE); // إخفاء التحميل
+                            if (task.isSuccessful()) {
+                                clearCart();
+                                Toast.makeText(getContext(), "Order placed successfully!", Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(getContext(), "Failed to place order.", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
                 }
-            });
-        }
+            }
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                binding.progressBar.setVisibility(View.GONE);
+                Toast.makeText(getContext(), "Could not retrieve user data to place order.", Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void clearCart() {
         String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
         DatabaseReference cartRef = FirebaseDatabase.getInstance().getReference("Carts").child(userId);
-        cartRef.removeValue(); // حذف كل المنتجات من سلة المستخدم
+        cartRef.removeValue();
     }
 
     private void initCartList() {
         binding.cartView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
-        // تهيئة الـ Adapter مع قائمة فارغة
         cartAdapter = new CartAdapter(new ArrayList<>(), getContext());
         binding.cartView.setAdapter(cartAdapter);
     }
@@ -112,7 +127,6 @@ public class CartFragment extends Fragment {
                 binding.scrollViewCart.setVisibility(View.VISIBLE);
             }
             currentCartItems = items;
-
             cartAdapter.updateList(items);
             calculateCart(items);
         });

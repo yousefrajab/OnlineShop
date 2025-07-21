@@ -31,7 +31,39 @@
             android:textSize="28sp"
             android:textStyle="bold" />
 
-        <!-- حقول الإدخال -->
+        <!-- قسم الصور -->
+        <TextView style="@style/AdminFormLabel" android:text="Product Images"/>
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/addImagesBtn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Select Images"
+            android:drawableStart="@android:drawable/ic_menu_gallery"/>
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/imagesRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/stroke_bg"
+            android:padding="4dp"
+            android:orientation="horizontal"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"/>
+
+        <!-- قسم الألوان -->
+        <TextView style="@style/AdminFormLabel" android:text="Available Colors (Hex codes, comma separated)"/>
+        <EditText
+            android:id="@+id/colorsEdt"
+            style="@style/AdminFormEditText"
+            android:hint="e.g., #FF0000,#00FF00,#0000FF"/>
+
+        <!-- قسم الأحجام -->
+        <TextView style="@style/AdminFormLabel" android:text="Available Sizes (Comma separated)"/>
+        <EditText
+            android:id="@+id/sizesEdt"
+            style="@style/AdminFormEditText"
+            android:hint="e.g., S,M,L,XL or 41,42,43"/>
+
+        <!-- باقي الحقول -->
         <TextView style="@style/AdminFormLabel" android:text="Product Title"/>
         <EditText android:id="@+id/titleEdt" style="@style/AdminFormEditText" android:hint="e.g., Stylish Watch"/>
 
@@ -44,13 +76,11 @@
         <TextView style="@style/AdminFormLabel" android:text="Old Price (Optional)"/>
         <EditText android:id="@+id/oldPriceEdt" style="@style/AdminFormEditText" android:hint="e.g., 120.00" android:inputType="numberDecimal"/>
 
-        <!-- ▼▼▼ الحقول الجديدة التي تمت إضافتها ▼▼▼ -->
         <TextView style="@style/AdminFormLabel" android:text="Discount Percent (e.g., 30%)"/>
         <EditText android:id="@+id/offPercentEdt" style="@style/AdminFormEditText" android:hint="e.g., 30%"/>
 
         <TextView style="@style/AdminFormLabel" android:text="Number of Reviews (Optional)"/>
         <EditText android:id="@+id/reviewEdt" style="@style/AdminFormEditText" android:hint="e.g., 25" android:inputType="number"/>
-        <!-- ▲▲▲ نهاية الحقول الجديدة ▲▲▲ -->
 
         <TextView style="@style/AdminFormLabel" android:text="Rating (Optional)"/>
         <EditText android:id="@+id/ratingEdt" style="@style/AdminFormEditText" android:hint="e.g., 4.5" android:inputType="numberDecimal"/>
@@ -81,6 +111,5 @@
             android:layout_gravity="center"
             android:visibility="gone"
             android:layout_marginTop="16dp"/>
-
     </LinearLayout>
 </ScrollView>

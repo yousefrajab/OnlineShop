@@ -1,5 +1,9 @@
 package com.example.onlineshop.Fragment;
 
+import android.app.Activity;
+import android.content.ClipData;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -8,11 +12,17 @@ import android.widget.ArrayAdapter;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.cloudinary.android.MediaManager;
+import com.cloudinary.android.callback.ErrorInfo;
+import com.cloudinary.android.callback.UploadCallback;
+import com.example.onlineshop.Adapter.AdminImagesAdapter;
 import com.example.onlineshop.Domain.CategoryModel;
 import com.example.onlineshop.Domain.ItemsModel;
 import com.example.onlineshop.R;
@@ -22,6 +32,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +45,33 @@ public class AddEditProductFragment extends Fragment {
     private DatabaseReference itemsRef;
     private List<CategoryModel> categoryList = new ArrayList<>();
     private ItemsModel productToEdit;
+
+    // --- متغيرات جديدة لإدارة الصور ---
+    private ArrayList<Uri> selectedImageUris = new ArrayList<>();
+    private AdminImagesAdapter imagesAdapter;
+    private ArrayList<String> uploadedImageUrls = new ArrayList<>();
+    private int uploadCounter = 0;
+
+    // --- Launcher جديد لاختيار الصور المتعددة ---
+    private final ActivityResultLauncher<Intent> imagePickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    selectedImageUris.clear(); // مسح القائمة القديمة قبل إضافة الجديدة
+                    if (result.getData().getClipData() != null) {
+                        // اختار المستخدم عدة صور
+                        ClipData clipData = result.getData().getClipData();
+                        for (int i = 0; i < clipData.getItemCount(); i++) {
+                            selectedImageUris.add(clipData.getItemAt(i).getUri());
+                        }
+                    } else if (result.getData().getData() != null) {
+                        // اختار المستخدم صورة واحدة
+                        selectedImageUris.add(result.getData().getData());
+                    }
+                    imagesAdapter.notifyDataSetChanged();
+                }
+            }
+    );
 
     public static AddEditProductFragment newInstance(ItemsModel product) {
         AddEditProductFragment fragment = new AddEditProductFragment();
@@ -64,6 +102,7 @@ public class AddEditProductFragment extends Fragment {
         viewModel = new ViewModelProvider(this).get(MainViewModel.class);
         itemsRef = FirebaseDatabase.getInstance().getReference("Items");
 
+        setupImagesRecyclerView();
         loadCategories();
         setupButtons();
 
@@ -72,18 +111,30 @@ public class AddEditProductFragment extends Fragment {
         }
     }
 
+    private void setupImagesRecyclerView() {
+        imagesAdapter = new AdminImagesAdapter(requireContext(), selectedImageUris);
+        binding.imagesRecyclerView.setAdapter(imagesAdapter);
+    }
+
     private void setupEditMode() {
         binding.pageTitleTxt.setText("Edit Product");
         binding.titleEdt.setText(productToEdit.getTitle());
-        // في وضع التعديل، نسمح بتغيير العنوان
         binding.titleEdt.setEnabled(true);
-
         binding.descriptionEdt.setText(productToEdit.getDescription());
         binding.priceEdt.setText(String.valueOf(productToEdit.getPrice()));
         binding.oldPriceEdt.setText(String.valueOf(productToEdit.getOldPrice()));
         binding.ratingEdt.setText(String.valueOf(productToEdit.getRating()));
         binding.offPercentEdt.setText(productToEdit.getOffPercent());
         binding.reviewEdt.setText(String.valueOf(productToEdit.getReview()));
+
+        if (productToEdit.getColor() != null) {
+            binding.colorsEdt.setText(String.join(",", productToEdit.getColor()));
+        }
+        if (productToEdit.getSize() != null) {
+            binding.sizesEdt.setText(String.join(",", productToEdit.getSize()));
+        }
+        // ملاحظة: عرض الصور القديمة يتطلب منطقًا إضافيًا لتحميلها من الروابط
+        // سنتخطاه الآن للتركيز على وظيفة الإضافة والتعديل
 
         addDeleteButton();
     }
@@ -111,11 +162,70 @@ public class AddEditProductFragment extends Fragment {
 
     private void setupButtons() {
         binding.backBtn.setOnClickListener(v -> getParentFragmentManager().popBackStack());
+
+        binding.addImagesBtn.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+            intent.setType("image/*");
+            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+            imagePickerLauncher.launch(intent);
+        });
+
         binding.saveProductBtn.setOnClickListener(v -> saveProduct());
     }
 
-    // --- دالة الحفظ النهائية والصحيحة التي تعتمد على المفتاح الفريد (Key) ---
     private void saveProduct() {
+        binding.progressBar.setVisibility(View.VISIBLE);
+
+        if (!selectedImageUris.isEmpty()) {
+            uploadImagesAndThenSaveData();
+        } else {
+            // لا توجد صور جديدة، احفظ البيانات مباشرة
+            ArrayList<String> imageUrls = (productToEdit != null && productToEdit.getPicUrl() != null)
+                    ? productToEdit.getPicUrl()
+                    : new ArrayList<>();
+            saveDataToFirebase(imageUrls);
+        }
+    }
+
+    private void uploadImagesAndThenSaveData() {
+        uploadedImageUrls.clear();
+        uploadCounter = 0;
+
+        // إذا كان في وضع التعديل، أضف الروابط القديمة أولاً
+        if (productToEdit != null && productToEdit.getPicUrl() != null) {
+            uploadedImageUrls.addAll(productToEdit.getPicUrl());
+        }
+
+        if (selectedImageUris.isEmpty()) {
+            saveDataToFirebase(uploadedImageUrls);
+            return;
+        }
+
+        for (Uri uri : selectedImageUris) {
+            MediaManager.get().upload(uri).callback(new UploadCallback() {
+                @Override
+                public void onSuccess(String requestId, Map resultData) {
+                    uploadedImageUrls.add((String) resultData.get("secure_url"));
+                    uploadCounter++;
+                    if (uploadCounter == selectedImageUris.size()) {
+                        saveDataToFirebase(uploadedImageUrls);
+                    }
+                }
+                @Override
+                public void onError(String requestId, ErrorInfo error) {
+                    uploadCounter++;
+                    if (uploadCounter == selectedImageUris.size()) {
+                        saveDataToFirebase(uploadedImageUrls);
+                    }
+                }
+                @Override public void onStart(String requestId) {}
+                @Override public void onProgress(String requestId, long bytes, long totalBytes) {}
+                @Override public void onReschedule(String requestId, ErrorInfo error) {}
+            }).dispatch();
+        }
+    }
+
+    private void saveDataToFirebase(ArrayList<String> finalImageUrls) {
         String title = binding.titleEdt.getText().toString().trim();
         String description = binding.descriptionEdt.getText().toString().trim();
         String priceStr = binding.priceEdt.getText().toString().trim();
@@ -123,13 +233,14 @@ public class AddEditProductFragment extends Fragment {
         String ratingStr = binding.ratingEdt.getText().toString().trim();
         String offPercent = binding.offPercentEdt.getText().toString().trim();
         String reviewStr = binding.reviewEdt.getText().toString().trim();
+        String colorsStr = binding.colorsEdt.getText().toString().trim();
+        String sizesStr = binding.sizesEdt.getText().toString().trim();
 
         if (title.isEmpty() || priceStr.isEmpty()) {
             Toast.makeText(getContext(), "Title and Price are required.", Toast.LENGTH_SHORT).show();
+            binding.progressBar.setVisibility(View.GONE);
             return;
         }
-
-        binding.progressBar.setVisibility(View.VISIBLE);
 
         double price = 0, oldPrice = 0, rating = 0;
         int review = 0;
@@ -147,8 +258,14 @@ public class AddEditProductFragment extends Fragment {
         int selectedCategoryPosition = binding.categorySpinner.getSelectedItemPosition();
         int categoryId = (selectedCategoryPosition >= 0) ? categoryList.get(selectedCategoryPosition).getId() : -1;
 
+        ArrayList<String> colorsList = new ArrayList<>();
+        if (!colorsStr.isEmpty()) colorsList.addAll(Arrays.asList(colorsStr.split("\\s*,\\s*")));
+
+        ArrayList<String> sizesList = new ArrayList<>();
+        if (!sizesStr.isEmpty()) sizesList.addAll(Arrays.asList(sizesStr.split("\\s*,\\s*")));
+
         if (productToEdit != null) {
-            // --- وضع التعديل (باستخدام المفتاح الحقيقي للمنتج) ---
+            // وضع التعديل
             Map<String, Object> updates = new HashMap<>();
             updates.put("title", title);
             updates.put("description", description);
@@ -158,20 +275,16 @@ public class AddEditProductFragment extends Fragment {
             updates.put("categoryId", categoryId);
             updates.put("offPercent", offPercent);
             updates.put("review", review);
+            updates.put("picUrl", finalImageUrls);
+            updates.put("color", colorsList);
+            updates.put("size", sizesList);
 
             itemsRef.child(productToEdit.getKey()).updateChildren(updates).addOnCompleteListener(task -> {
-                binding.progressBar.setVisibility(View.GONE);
-                if (task.isSuccessful()) {
-                    Toast.makeText(getContext(), "Product updated successfully!", Toast.LENGTH_SHORT).show();
-                    if (getParentFragmentManager() != null) getParentFragmentManager().popBackStack();
-                } else {
-                    Toast.makeText(getContext(), "Failed to update product.", Toast.LENGTH_SHORT).show();
-                }
+                handleSaveCompletion(task, "updated");
             });
         } else {
-            // --- وضع الإضافة (باستخدام مفتاح جديد وفريد) ---
+            // وضع الإضافة
             String key = itemsRef.push().getKey();
-
             ItemsModel newProduct = new ItemsModel();
             newProduct.setKey(key);
             newProduct.setTitle(title);
@@ -182,21 +295,25 @@ public class AddEditProductFragment extends Fragment {
             newProduct.setCategoryId(categoryId);
             newProduct.setOffPercent(offPercent);
             newProduct.setReview(review);
-            newProduct.setPicUrl(new ArrayList<>());
-            newProduct.setColor(new ArrayList<>());
-            newProduct.setSize(new ArrayList<>());
+            newProduct.setPicUrl(finalImageUrls);
+            newProduct.setColor(colorsList);
+            newProduct.setSize(sizesList);
 
             if (key != null) {
                 itemsRef.child(key).setValue(newProduct).addOnCompleteListener(task -> {
-                    binding.progressBar.setVisibility(View.GONE);
-                    if (task.isSuccessful()) {
-                        Toast.makeText(getContext(), "Product added successfully!", Toast.LENGTH_SHORT).show();
-                        if (getParentFragmentManager() != null) getParentFragmentManager().popBackStack();
-                    } else {
-                        Toast.makeText(getContext(), "Failed to add product.", Toast.LENGTH_SHORT).show();
-                    }
+                    handleSaveCompletion(task, "added");
                 });
             }
+        }
+    }
+
+    private void handleSaveCompletion(com.google.android.gms.tasks.Task<Void> task, String action) {
+        binding.progressBar.setVisibility(View.GONE);
+        if (task.isSuccessful()) {
+            Toast.makeText(getContext(), "Product " + action + " successfully!", Toast.LENGTH_SHORT).show();
+            if (getParentFragmentManager() != null) getParentFragmentManager().popBackStack();
+        } else {
+            Toast.makeText(getContext(), "Failed to " + action + " product.", Toast.LENGTH_SHORT).show();
         }
     }
 
